@@ -8,8 +8,7 @@ MAIL_FILE=os.environ['HOME']+"/mail/mbox"
 # How often to look at new messages (in seconds)
 TIME_INTERVAL=1.0
 
-# How many messages received so far (so we can track when we get
-# new messages)
+# How many messages received so far (so we can track when we get new messages)
 Received=0
 
 def parseMails(contents):
@@ -35,7 +34,6 @@ def parseMails(contents):
             mails[-1]['from'] = f.group(1)[1:-1] if f else ""
         if "boundary=" in line:
             delim = re.search("boundary=\"?([^\"]*)\"?", line).group(1)
-            print "FOUND THE DELIM--- {}".format(delim)
             # Find the text/plain content
             while "text/plain" not in line.lower():
                 i += 1
@@ -65,11 +63,12 @@ def main():
         try:
             with open(MAIL_FILE, "r") as mails:
                 print "### RESULTS ###"
-                for mail in parseMails(mails.read()):
+                for mail in parseMails(mails.read())[Received:]:
                     print 30*'-'
                     print "FROM: {}".format(mail['from'])
                     print "DATE: {}".format(mail['date'])
                     print "CONTENT: {}".format(mail['content'])
+                    Received += 1
             time.sleep(TIME_INTERVAL)
         except KeyboardInterrupt, SystemExit:
             print "Exiting..."
