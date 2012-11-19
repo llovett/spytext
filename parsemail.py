@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import re, os, threading, time
+import re, os, time
 
 # Where mail goes when sent to your "*.cs.oberlin.edu" account
 MAIL_FILE=os.environ['HOME']+"/mail/mbox"
@@ -12,55 +12,68 @@ TIME_INTERVAL=1.0
 # new messages)
 Received=0
 
-# Thread that we can stop/kill easily, so we can shut this down
-# when we need to.
-class MailThread (threading.Thread):
-    def __init__(self,*args,**kwargs):
-        super(MailThread, self).__init__(*args,**kwargs)
-        self._stop = threading.Event()
+def parseMails(contents):
+    ''' Parses the contents of the mbox file into individual mails.
+    '''
+    mails = [{}]
+    lines = contents.split("\n")
+    i = 0
 
-    def stop(self):
-        self._stop.set()
+    def unfilled(field):
+        try:
+            return len(mails[-1][field]) == 0
+        except KeyError:
+            return True
 
-    def stopped(self):
-        return self._stop.isSet()
-
-    def run(self):
-        if not self.stopped():
-            super(MailThread, self).run()
-
-def findSender(mail):
-    # A very lazy regular expression to pull out sender's email.
-    # This assumes that emails in the 'mbox' file are valid.
-    result = re.search("From:.*(<.*\.(edu|com|net|org)>)", mail)
-    return result.group(1)[1:-1] if result else ""
-
-def findContents(mail):
-    # Grabs MIME-type, contents, and trailing '--'
-    mimeAndContent = re.search("Content-Type: text/plain.*--", mail, re.MULTILINE | re.DOTALL)
-    if not mimeAndContent:return ""
-    # Remove first and last lines, get only the content this way
-    return "\n".join(mimeAndContent.group(0).split("\n")[1:-1]).strip()
+    while i < len(lines):
+        line = lines[i]
+        if "Date: " in line and unfilled('date'):
+            d = re.search("Date:(.*)", line)
+            mails[-1]['date'] = d.group(1) if d else ""
+        if "From: " in line and unfilled('from'):
+            f = re.search("From:.*(<.*\.(edu|com|net|org)>)", line)
+            mails[-1]['from'] = f.group(1)[1:-1] if f else ""
+        if "boundary=" in line:
+            delim = re.search("boundary=\"?([^\"]*)\"?", line).group(1)
+            print "FOUND THE DELIM--- {}".format(delim)
+            # Find the text/plain content
+            while "text/plain" not in line.lower():
+                i += 1
+                line = lines[i]
+            i += 1
+            line = lines[i]
+            # Grab the content
+            linebuff = []
+            while "--{}".format(delim) not in line:
+                linebuff.append(line)
+                i += 1
+                line = lines[i]
+            # At end-of-message? If not, go there.
+            while "--{}--".format(delim) not in line:
+                i += 1
+                line = lines[i]
+            # Put contents in message
+            mails[-1]['content'] = ("\n".join(linebuff)).strip()
+            mails.append({})
+        i += 1
+    # Don't return the empty dictionary at the end of the list
+    return mails[:-1]
 
 def main():
     global Received
     while True:
-        with open(MAIL_FILE, "r") as mails:
-            # Read through all the new mails, but exclude the "empty mail" at the
-            # end, due to the way we're splitting here (just white space as last
-            # element of this list)
-            for mail in re.split("--.*--", mails.read())[Received:-1]:
-                print "SENDER: {}".format(findSender(mail))
-                print "CONTENTS: {}".format(findContents(mail))
-                Received += 1
-        time.sleep(TIME_INTERVAL)
+        try:
+            with open(MAIL_FILE, "r") as mails:
+                print "### RESULTS ###"
+                for mail in parseMails(mails.read()):
+                    print 30*'-'
+                    print "FROM: {}".format(mail['from'])
+                    print "DATE: {}".format(mail['date'])
+                    print "CONTENT: {}".format(mail['content'])
+            time.sleep(TIME_INTERVAL)
+        except KeyboardInterrupt, SystemExit:
+            print "Exiting..."
+            break
 
 if __name__ == '__main__':
-    theThread = None
-    try:
-        theThread = MailThread(target=main).start()
-    except KeyboardInterrupt, SystemExit:
-        print "Exiting..."
-        theThread.stop()
-        theThread.join()
-        
+    main()
