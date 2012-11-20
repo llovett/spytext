@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 
+# TODO: differentiate between "i spy x at y", "is it z", and "mission"
+#               -- reply accordingly
+
 import email
 import mailbox
 
-import re, os, time
+import os, time
 
 # Where mail goes when sent to your "*.cs.oberlin.edu" account
 
-MAIL_FILE=os.environ['HOME']+"/mail/mbox"
+MAIL_FILE=os.environ['HOME']+"/mbox"
 
 # How often to look at new messages (in seconds)
 TIME_INTERVAL=1.0
