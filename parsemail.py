@@ -19,6 +19,11 @@ TIME_INTERVAL=1.0
 # How many messages received so far (so we can track when we get new messages)
 Received=0
 
+# I-Spy "database" (holds information about objects that have been spied,
+# where they were observered, and who has been/is on a mission to go find
+# them).
+SpyData = []
+
 def parseMails():
     ''' Parses the contents of the mbox file into individual mails.
     '''
@@ -35,9 +40,66 @@ def parseMails():
     
     return results
 
+def addSpyMission(message):
+    ''' Takes in a message in the form of:
+    
+    I spy _____ (preposition) _____.
+
+    Where the first blank is an object of interested that was
+    observed, and the second blank is the location of the object. The
+    case of this string is unimportant, nor are the number of
+    prepositions (we'll just use the first one), or any puctuation /
+    extra whitespace.
+    '''
+    # Characters that we don't want to see in incoming messages. These will
+    # be removed before being processed.
+    bad_characters = "!\\:;`~@#$%^&*()_+=/,.<>\"'"
+    message = message.translate(None, bad_characters)
+
+    # Various prepositions we'll accept to separate the object from the place.
+    prepositions = ("at","inside","in","on top of","on","next to","under")
+    prep = -1
+    for i in xrange(len(prepositions)):
+        if " {} ".format(prepositions[i]) in message:
+            prep = i
+            break
+
+    # Not a valid message
+    if prep < 0:
+        return "Try texting \"i spy OBJECT at PLACE\""
+
+    # Convert to prepositional string
+    prep = " {} ".format(prepositions[prep])
+    spiedObject, prep, spiedLocation = [s.strip() for s in message.partition(prep)]
+
+    # Remove "i spy" from the spied object, and any leading article (i.e., "the", "a", "an")
+    sow = spiedObject.split()[2:]
+    articles = ("a","an","the")
+    if sow[0] in articles:
+        sow = sow[1:]
+    spiedObject = (" ".join(sow)).strip()
+
+    # Add preposition to location, so it's more descriptive
+    spiedLocation = prep + " " + spiedLocation
+
+    # Add item and location to the set of spy missions!
+    SpyData.append( {
+            "item" : spiedObject,
+            "location" : spiedLocation,
+            "explorers" : []
+            } )
+    
 def replyMail(mailMessage):
-    # For now, just respond with "I HAVE RESPONDED", followed by
-    # the original contents of the mail message we're replying to.
+    content = mailMessage['content'].lower().strip()
+    if content.startsWith("i spy"):
+        addSpyMission(content)
+    elif content.startsWith("mission"):
+        # TODO: give a mission
+        pass
+    elif content.startsWith("is it"):
+        # TODO: process the guess
+        pass
+
     text = "I HAVE RESPONDED!\n"+mailMessage['content']
     me = "spytext@localhost"
     you = mailMessage['from']
@@ -47,24 +109,32 @@ def replyMail(mailMessage):
     s.sendmail(me, [you], response.as_string())
     s.quit()
 
-def main():
-    global Received
-    while True:
-        try:
-            mails = parseMails()
-            print "### RESULTS ###"
-            for mail in mails[Received:]:
-                print 30*'-'
-                print "SUBJECT: {}".format(mail['subject'])
-                print "FROM: {}".format(mail['from'])
-                print "CONTENT: {}".format(mail['content'])
-                Received += 1
-                replyMail(mail)
+# def main():
+#     global Received
+#     while True:
+#         try:
+#             mails = parseMails()
+#             print "### RESULTS ###"
+#             for mail in mails[Received:]:
+#                 print 30*'-'
+#                 print "SUBJECT: {}".format(mail['subject'])
+#                 print "FROM: {}".format(mail['from'])
+#                 print "CONTENT: {}".format(mail['content'])
+#                 Received += 1
+#                 replyMail(mail)
 
-            time.sleep(TIME_INTERVAL)
-        except KeyboardInterrupt, SystemExit:
-            print "Exiting..."
-            break
+#             time.sleep(TIME_INTERVAL)
+#         except KeyboardInterrupt, SystemExit:
+#             print "Exiting..."
+#             break
+
+
+def main():
+    msg = "asdf"
+    while len(msg) > 0:
+        msg = raw_input("Enter a message: ")
+        addSpyMission(msg)
+    print str(SpyData)
 
 if __name__ == '__main__':
     main()
