@@ -65,7 +65,7 @@ def addSpyMission(message, creator):
     message = message.translate(None, bad_characters)
 
     # Various prepositions we'll accept to separate the object from the place.
-    prepositions = ("at","inside","in","on top of","on","next to","under")
+    prepositions = ("at","inside","in","on top of","on","next to","under","between")
     prep = -1
     for i in xrange(len(prepositions)):
         if " {} ".format(prepositions[i]) in message:
@@ -95,7 +95,8 @@ def addSpyMission(message, creator):
             "item" : spiedObject,
             "location" : spiedLocation,
             "explorers" : set(),
-            "creator": creator
+            "creator": creator,
+            "message": message
             } )
     
 def giveMission(who):
@@ -118,7 +119,7 @@ def giveMission(who):
 
     # Assign the mission, and give a mission statement
     mission['explorers'].add(who)
-    return "i spy {} {}".format(mission['item'], mission['location'])
+    return mission['message']
 
 def replyMail(mailMessage):
     content = mailMessage['content'].lower().strip()
@@ -161,11 +162,24 @@ def replyMail(mailMessage):
 
 
 def main():
+    # Dummy missions from the machine
+    machineName = "andr0id"
+    myName = "me"
+    dummies = ["I spy an emergency pole between two buildings",
+               "I spy something yellow and black near Stevenson",
+               "I spy a message in chalk."]
+    for d in dummies:
+        addSpyMission(d, machineName)
+    
     msg = "asdf"
     while len(msg) > 0:
         msg = raw_input("Enter a message: ")
         addSpyMission(msg, "me")
     print str(SpyData)
+
+    print
+    print "YOUR MISSION: "
+    print giveMission(myName)
 
 if __name__ == '__main__':
     main()
