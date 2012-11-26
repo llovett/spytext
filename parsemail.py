@@ -121,14 +121,23 @@ def giveMission(who):
     mission['explorers'].add(who)
     return mission['message']
 
+def processMsg(mailMessage):
+    content = mailMessage['content'].lower().strip()
+    if content.startswith("i spy"):
+        addSpyMission(content, mailMessage['from'])
+    elif content.startswith("mission"):
+        return giveMission(mailMessage['from'])
+    elif content.startswith("is it"):
+        # TODO: process the guess
+        pass
+
 def replyMail(mailMessage):
     content = mailMessage['content'].lower().strip()
-    if content.startsWith("i spy"):
-        addSpyMission(content, mailMessage['from'])
-    elif content.startsWith("mission"):
-        # TODO: give a mission
-        pass
-    elif content.startsWith("is it"):
+    if content.startswith("i spy"):
+        responseMsg = addSpyMission(content, mailMessage['from'])
+    elif content.startswith("mission"):
+        responseMsg = giveMission(mailMessage['from'])
+    elif content.startswith("is it"):
         # TODO: process the guess
         pass
 
@@ -164,22 +173,23 @@ def replyMail(mailMessage):
 def main():
     # Dummy missions from the machine
     machineName = "andr0id"
-    myName = "me"
     dummies = ["I spy an emergency pole between two buildings",
                "I spy something yellow and black near Stevenson",
                "I spy a message in chalk."]
     for d in dummies:
         addSpyMission(d, machineName)
     
-    msg = "asdf"
-    while len(msg) > 0:
-        msg = raw_input("Enter a message: ")
-        addSpyMission(msg, "me")
-    print str(SpyData)
-
-    print
-    print "YOUR MISSION: "
-    print giveMission(myName)
-
+    # Prompt nice for testing
+    myName = "me"
+    while len(myName) > 0:
+        myName = raw_input("Give a name > ")
+        msg = "asdf"
+        while len(msg) > 0:
+            msg = raw_input("... Enter a message: ")
+            if msg == "info":
+                print str(SpyData)
+            else:
+                print processMsg({"from":myName,"content":msg})
+        
 if __name__ == '__main__':
     main()
