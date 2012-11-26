@@ -8,6 +8,7 @@ import mailbox
 import smtplib
 from email.mime.text import MIMEText
 import os, time
+from random import choice, shuffle
 
 # Where mail goes when sent to your "*.cs.oberlin.edu" account
 #MAIL_FILE=os.environ['HOME']+"/mail/mbox"
@@ -40,7 +41,7 @@ def parseMails():
     
     return results
 
-def addSpyMission(message):
+def addSpyMission(message, creator):
     ''' Takes in a message in the form of:
     
     I spy _____ (preposition) _____.
@@ -50,6 +51,13 @@ def addSpyMission(message):
     case of this string is unimportant, nor are the number of
     prepositions (we'll just use the first one), or any puctuation /
     extra whitespace.
+
+    'creator' is the creator of this mission. We track this so that we
+    don't end up assigning this mission to the same person who made
+    it.
+
+    Returns a string that can be sent back as a text to the user who
+    submitted this mission or None if nothing need be sent back.
     '''
     # Characters that we don't want to see in incoming messages. These will
     # be removed before being processed.
@@ -86,13 +94,36 @@ def addSpyMission(message):
     SpyData.append( {
             "item" : spiedObject,
             "location" : spiedLocation,
-            "explorers" : []
+            "explorers" : set(),
+            "creator": creator
             } )
     
+def giveMission(who):
+    '''
+    Assigns a spy mission to the person given by the parameter,
+    'who'. The assignment takes place such that the person is not the
+    creator of their own mission, and they have not performed this
+    mission before.
+    '''
+    mission = None
+    shuffle(SpyData)
+    for d in SpyData:
+        if d['creator'] != who and who not in d['explorers']:
+            mission = d
+            break
+    if not mission:
+        # This person has either created or participated in every
+        # mission we have, so give a random one.
+        mission = choice(SpyData)
+
+    # Assign the mission, and give a mission statement
+    mission['explorers'].add(who)
+    return "i spy {} {}".format(mission['item'], mission['location'])
+
 def replyMail(mailMessage):
     content = mailMessage['content'].lower().strip()
     if content.startsWith("i spy"):
-        addSpyMission(content)
+        addSpyMission(content, mailMessage['from'])
     elif content.startsWith("mission"):
         # TODO: give a mission
         pass
@@ -133,7 +164,7 @@ def main():
     msg = "asdf"
     while len(msg) > 0:
         msg = raw_input("Enter a message: ")
-        addSpyMission(msg)
+        addSpyMission(msg, "me")
     print str(SpyData)
 
 if __name__ == '__main__':
