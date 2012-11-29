@@ -94,7 +94,7 @@ def addSpyMission(message, creator):
 
     # Add item and location to the set of spy missions!
     SpyData.append( {
-            "item" : spiedObject,
+            "item" : None,
             "location" : spiedLocation,
             "explorers" : set(),
             "creator": creator,
