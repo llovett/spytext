@@ -14,6 +14,10 @@ from random import choice, shuffle
 #MAIL_FILE=os.environ['HOME']+"/mail/mbox"
 MAIL_FILE=os.environ['HOME']+"/mbox"
 
+# Prepositions to acknowledge
+Prepositions = ("at","inside","in","on top of","on","next to","under","between")
+Articles = ("a","an","the")
+
 # How often to look at new messages (in seconds)
 TIME_INTERVAL=1.0
 
@@ -65,10 +69,9 @@ def addSpyMission(message, creator):
     message = message.translate(None, bad_characters)
 
     # Various prepositions we'll accept to separate the object from the place.
-    prepositions = ("at","inside","in","on top of","on","next to","under","between")
     prep = -1
-    for i in xrange(len(prepositions)):
-        if " {} ".format(prepositions[i]) in message:
+    for i in xrange(len(Prepositions)):
+        if " {} ".format(Prepositions[i]) in message:
             prep = i
             break
 
@@ -77,13 +80,12 @@ def addSpyMission(message, creator):
         return "Try texting \"i spy OBJECT at PLACE\""
 
     # Convert to prepositional string
-    prep = " {} ".format(prepositions[prep])
+    prep = " {} ".format(Prepositions[prep])
     spiedObject, prep, spiedLocation = [s.strip() for s in message.partition(prep)]
 
     # Remove "i spy" from the spied object, and any leading article (i.e., "the", "a", "an")
     sow = spiedObject.split()[2:]
-    articles = ("a","an","the")
-    if sow[0] in articles:
+    if sow[0] in Articles:
         sow = sow[1:]
     spiedObject = (" ".join(sow)).strip()
 
@@ -121,6 +123,20 @@ def giveMission(who):
     mission['explorers'].add(who)
     return mission['message']
 
+def missionGuess(who, guess):
+    '''
+    Checks to see if 'guess' matches up with the object currently
+    being searched for in the user's mission. Returns an appropriate
+    response message based on success.
+    '''
+    userMissions = [m for m in SpyData if who in m['explorers']]
+    shortMessage = [word for word in guess.lower().split() if word not in Articles and word not in Prepositions]
+    for mission in [m['object'] for m in userMissions]:
+        guessCorrect = len(set(shortMessage) & set(mission.split())) >= len((mission.split()+1)/2)
+        if guessCorrect:
+            return "{} ---- you got it!".format(mission)
+    return "nope."
+    
 def processMsg(mailMessage):
     content = mailMessage['content'].lower().strip()
     if content.startswith("i spy"):
@@ -128,6 +144,7 @@ def processMsg(mailMessage):
     elif content.startswith("mission"):
         return giveMission(mailMessage['from'])
     elif content.startswith("is it"):
+        return missionGuess(mailMessage['from'], content)
         # TODO: process the guess
         pass
 
