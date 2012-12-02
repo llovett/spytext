@@ -169,8 +169,6 @@ def processMsg(mailMessage):
         return giveMission(mailMessage['from'])
     elif content.startswith("is it"):
         return missionGuess(mailMessage['from'], content)
-        # TODO: process the guess
-        pass
     else:
         finishAddSpyMission(content, mailMessage['from'])
 
