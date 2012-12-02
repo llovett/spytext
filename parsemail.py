@@ -156,7 +156,7 @@ def missionGuess(who, guess):
     userMissions = [m for m in SpyData if who in m['explorers']]
     shortMessage = [word for word in guess.lower().split() if word not in Articles and word not in Prepositions]
     for mission in [m['item'] for m in userMissions]:
-        guessCorrect = len(set(shortMessage) & set(mission.split())) >= len((mission.split()+1)/2)
+        guessCorrect = len(set(shortMessage) & set(mission.split())) >= (len(mission.split())+1)/2
         if guessCorrect:
             return "{} ---- you got it!".format(mission)
     return "nope."
