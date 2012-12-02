@@ -63,6 +63,13 @@ def addSpyMission(message, creator):
     Returns a string that can be sent back as a text to the user who
     submitted this mission or None if nothing need be sent back.
     '''
+    # Remove any incomplete missions this user has submitted (i.e., missions
+    # that have no solution provided.)
+    for i in xrange(len(SpyData)):
+        mission = SpyData[i]
+        if mission["creator"] == creator and not mission["complete"]:
+            SpyData.remove(mission)
+
     # Characters that we don't want to see in incoming messages. These will
     # be removed before being processed.
     bad_characters = "!\\:;`~@#$%^&*()_+=/,.<>\"'"
@@ -98,8 +105,25 @@ def addSpyMission(message, creator):
             "location" : spiedLocation,
             "explorers" : set(),
             "creator": creator,
-            "message": message
+            "message": message,
+            "complete": False
             } )
+
+def finishAddSpyMission(message, creator):
+    '''
+    Completes the process of adding a spy mission by taking in the solution
+    (presumably in parameter 'message') and the creator, and finding the
+    incomplete mission by that creator, setting the solution, and marking
+    that mission as complete.
+    '''
+    incomplete = None
+    for mission in SpyData:
+        if mission['creator'] == creator and not mission['complete']:
+            incomplete = mission
+            break
+    if incomplete:
+        incomplete['item'] = message
+        incomplete['complete'] = True
     
 def giveMission(who):
     '''
@@ -131,7 +155,7 @@ def missionGuess(who, guess):
     '''
     userMissions = [m for m in SpyData if who in m['explorers']]
     shortMessage = [word for word in guess.lower().split() if word not in Articles and word not in Prepositions]
-    for mission in [m['object'] for m in userMissions]:
+    for mission in [m['item'] for m in userMissions]:
         guessCorrect = len(set(shortMessage) & set(mission.split())) >= len((mission.split()+1)/2)
         if guessCorrect:
             return "{} ---- you got it!".format(mission)
@@ -147,6 +171,8 @@ def processMsg(mailMessage):
         return missionGuess(mailMessage['from'], content)
         # TODO: process the guess
         pass
+    else:
+        finishAddSpyMission(content, mailMessage['from'])
 
 def replyMail(mailMessage):
     content = mailMessage['content'].lower().strip()
@@ -190,11 +216,14 @@ def replyMail(mailMessage):
 def main():
     # Dummy missions from the machine
     machineName = "andr0id"
-    dummies = ["I spy an emergency pole between two buildings",
-               "I spy something yellow and black near Stevenson",
-               "I spy a message in chalk."]
+    dummies =   [
+        ("I spy a blue spire in the middle of the park.", "emergency pole"),
+        ("I spy something yellow and black near Stevenson", "traffic post"),
+        ("I spy a message in chalk.", "go this way")
+                ]
     for d in dummies:
-        addSpyMission(d, machineName)
+        addSpyMission(d[0], machineName)
+        finishAddSpyMission(d[1], machineName)
     
     # Prompt nice for testing
     myName = "me"
