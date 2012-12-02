@@ -158,19 +158,26 @@ def missionGuess(who, guess):
     for mission in [m['item'] for m in userMissions]:
         guessCorrect = len(set(shortMessage) & set(mission.split())) >= (len(mission.split())+1)/2
         if guessCorrect:
-            return "{} ---- you got it!".format(mission)
+            return "\"{}\" ---- you got it!".format(mission)
     return "nope."
     
 def processMsg(mailMessage):
+    '''
+    Processes the inbound mail message and determines what to do with it.
+    Returns a string that can be texted back to the sender, or None.
+    '''
     content = mailMessage['content'].lower().strip()
+    sender = mailMessage['from']
     if content.startswith("i spy"):
-        addSpyMission(content, mailMessage['from'])
+        failure = addSpyMission(content, sender)
+        if failure:
+            return failure
     elif content.startswith("mission"):
-        return giveMission(mailMessage['from'])
+        return giveMission(sender)
     elif content.startswith("is it"):
-        return missionGuess(mailMessage['from'], content)
+        return missionGuess(sender, content)
     else:
-        finishAddSpyMission(content, mailMessage['from'])
+        finishAddSpyMission(content, sender)
 
 def replyMail(mailMessage):
     content = mailMessage['content'].lower().strip()
