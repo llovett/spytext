@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-# TODO: differentiate between "i spy x at y", "is it z", and "mission"
-#               -- reply accordingly
-
 import email
 import mailbox
 import smtplib
