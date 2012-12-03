@@ -12,7 +12,8 @@ from random import choice, shuffle
 
 # Where mail goes when sent to your "*.cs.oberlin.edu" account
 #MAIL_FILE=os.environ['HOME']+"/mail/mbox"
-MAIL_FILE=os.environ['HOME']+"/mbox"
+MAIL_FILE = os.environ['HOME']+"/mbox"
+LOG_FILE = "parsemail.log"
 
 # Prepositions to acknowledge
 Prepositions = ("at","inside","in","on top of","on","next to","under","between","nearby","near","by")
@@ -29,6 +30,13 @@ Received=0
 # them).
 SpyData = []
 
+def log(content):
+    '''
+    Logs a message to a log file
+    '''
+    with open(LOG_FILE, "a") as log:
+        log.write(content+'\n')
+
 def parseMails():
     ''' Parses the contents of the mbox file into individual mails.
     '''
@@ -42,12 +50,12 @@ def parseMails():
                 results[-1]["content"] = part.get_payload()
                 results[-1]["from"] = message['from']
                 results[-1]["subject"] = message['Subject']
-    
+
     return results
 
 def addSpyMission(message, creator):
     ''' Takes in a message in the form of:
-    
+
     I spy _____ (preposition) _____.
 
     Where the first blank is an object of interested that was
@@ -78,7 +86,7 @@ def addSpyMission(message, creator):
     # Various prepositions we'll accept to separate the object from the place.
     prep = -1
     for i in xrange(len(Prepositions)):
-        if " {} ".format(Prepositions[i]) in message:
+        if " %s "%format(Prepositions[i]) in message:
             prep = i
             break
 
@@ -87,7 +95,7 @@ def addSpyMission(message, creator):
         return "Try texting \"i spy OBJECT at PLACE\""
 
     # Convert to prepositional string
-    prep = " {} ".format(Prepositions[prep])
+    prep = " %s "%format(Prepositions[prep])
     spiedObject, prep, spiedLocation = [s.strip() for s in message.partition(prep)]
 
     # Remove "i spy" from the spied object, and any leading article (i.e., "the", "a", "an")
@@ -124,7 +132,7 @@ def finishAddSpyMission(message, creator):
     if incomplete:
         incomplete['item'] = message
         incomplete['complete'] = True
-    
+
 def giveMission(who):
     '''
     Assigns a spy mission to the person given by the parameter,
@@ -159,14 +167,17 @@ def missionGuess(who, guess):
     for mission in [m['item'] for m in userMissions]:
         guessCorrect = len(set(shortMessage) & set(mission.split())) >= (len(mission.split())+1)/2
         if guessCorrect:
-            return "\"{}\" ---- you got it!".format(mission)
+            return "\"%s\" ---- you got it!"%format(mission)
     return "nope."
-    
+
 def processMsg(mailMessage):
     '''
     Processes the inbound mail message and determines what to do with it.
     Returns a string that can be texted back to the sender, or None.
     '''
+
+    log('Processing...: '+str(mailMessage))
+
     content = mailMessage['content'].lower().strip()
     sender = mailMessage['from']
     if content.startswith("i spy"):
@@ -181,67 +192,60 @@ def processMsg(mailMessage):
         finishAddSpyMission(content, sender)
 
 def replyMail(mailMessage):
-    content = mailMessage['content'].lower().strip()
-    if content.startswith("i spy"):
-        responseMsg = addSpyMission(content, mailMessage['from'])
-    elif content.startswith("mission"):
-        responseMsg = giveMission(mailMessage['from'])
-    elif content.startswith("is it"):
-        # TODO: process the guess
-        pass
+    '''
+    Sends an appropriate response, or no response at all given a user's
+    message.
+    '''
+    text = processMsg(mailMessage)
+    if text:
+        me = "ispyoberlin@gmail.com"
+        you = mailMessage['from']
+        response = MIMEText(text)
 
-    text = "I HAVE RESPONDED!\n"+mailMessage['content']
-    me = "spytext@localhost"
-    you = mailMessage['from']
-    response = MIMEText(text)
-
-    s = smtplib.SMTP('localhost')
-    s.sendmail(me, [you], response.as_string())
-    s.quit()
-
-# def main():
-#     global Received
-#     while True:
-#         try:
-#             mails = parseMails()
-#             print "### RESULTS ###"
-#             for mail in mails[Received:]:
-#                 print 30*'-'
-#                 print "SUBJECT: {}".format(mail['subject'])
-#                 print "FROM: {}".format(mail['from'])
-#                 print "CONTENT: {}".format(mail['content'])
-#                 Received += 1
-#                 replyMail(mail)
-
-#             time.sleep(TIME_INTERVAL)
-#         except KeyboardInterrupt, SystemExit:
-#             print "Exiting..."
-#             break
-
+        log("Sending...: "+text+" to "+mailMessage['from'])
+        s = smtplib.SMTP('localhost')
+        s.sendmail(me, [you], response.as_string())
+        s.quit()
 
 def main():
+    # Delete the mailbox
+    os.remove(MAIL_FILE)
     # Dummy missions from the machine
     machineName = "andr0id"
-    dummies =   [
+    dummies = [
         ("I spy a blue spire in the middle of the park.", "emergency pole"),
         ("I spy something yellow and black near Stevenson", "traffic post"),
         ("I spy a message in chalk.", "go this way")
-                ]
+              ]
     for d in dummies:
         addSpyMission(d[0], machineName)
         finishAddSpyMission(d[1], machineName)
-    
+
+    global Received
+    while True:
+        try:
+            mails = parseMails()
+            for mail in mails[Received:]:
+                Received += 1
+                replyMail(mail)
+            time.sleep(TIME_INTERVAL)
+        except KeyboardInterrupt, SystemExit:
+            print "Exiting..."
+            break
+
+
+#def main():
     # Prompt nice for testing
-    myName = "me"
-    while len(myName) > 0:
-        myName = raw_input("Give a name > ")
-        msg = "asdf"
-        while len(msg) > 0:
-            msg = raw_input("... Enter a message: ")
-            if msg == "info":
-                print str(SpyData)
-            else:
-                print processMsg({"from":myName,"content":msg})
-        
+    #myName = "me"
+    #while len(myName) > 0:
+    #    myName = raw_input("Give a name > ")
+    #    msg = "asdf"
+    #    while len(msg) > 0:
+    #        msg = raw_input("... Enter a message: ")
+    #        if msg == "info":
+    #            print str(SpyData)
+    #        else:
+    #            print processMsg({"from":myName,"content":msg})
+
 if __name__ == '__main__':
     main()
