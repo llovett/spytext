@@ -15,7 +15,7 @@ from random import choice, shuffle
 MAIL_FILE=os.environ['HOME']+"/mbox"
 
 # Prepositions to acknowledge
-Prepositions = ("at","inside","in","on top of","on","next to","under","between")
+Prepositions = ("at","inside","in","on top of","on","next to","under","between","nearby","near","by")
 Articles = ("a","an","the")
 
 # How often to look at new messages (in seconds)
@@ -154,7 +154,8 @@ def missionGuess(who, guess):
     response message based on success.
     '''
     userMissions = [m for m in SpyData if who in m['explorers']]
-    shortMessage = [word for word in guess.lower().split() if word not in Articles and word not in Prepositions]
+    # Slice 'is it' off the guess string, and remove articles and propositions
+    shortMessage = [word for word in guess.lower().split()[2:] if word not in Articles and word not in Prepositions]
     for mission in [m['item'] for m in userMissions]:
         guessCorrect = len(set(shortMessage) & set(mission.split())) >= (len(mission.split())+1)/2
         if guessCorrect:
