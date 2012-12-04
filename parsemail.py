@@ -210,7 +210,7 @@ def main():
     # Dummy missions from the machine
     machineName = "andr0id"
     dummies = [
-        ("I spy a blue spire in the middle of the park.", "emergency pole"),
+        ("I spy a blue spire in the middle of Tappan.", "emergency pole"),
         ("I spy something yellow and black near Stevenson", "traffic post"),
         ("I spy a message in chalk.", "go this way")
               ]
